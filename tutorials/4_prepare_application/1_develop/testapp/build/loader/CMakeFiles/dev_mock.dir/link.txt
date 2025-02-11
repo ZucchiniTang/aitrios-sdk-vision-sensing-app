@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g  -m32 -shared -Wl,-soname,libdev_mock.so -o libdev_mock.so CMakeFiles/dev_mock.dir/mock/dev_mock_if.c.o CMakeFiles/dev_mock.dir/mock/dev_mock.cpp.o CMakeFiles/dev_mock.dir/workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/sdk/third_party/parson/parson.c.o 

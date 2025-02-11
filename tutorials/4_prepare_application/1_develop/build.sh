@@ -23,7 +23,7 @@ usage_exit() {
     echo "usage	: ./build.sh <Options>"
     echo ""
     echo " <Options>"
-    echo "    -t : (optional) specify build Wasm type. value is [ic|od|switchdnn]."
+    echo "    -t : (optional) specify build Wasm type. value is [ic|od|switchdnn|kp]."
     echo "    -d : (optional) build for debugging."
     echo "    -c : (optional) clean all Wasm object."
     echo "    -C : (optional) clean all Wasm object and Docker image."
@@ -91,6 +91,15 @@ build_od() {
         /bin/sh -c "cd ${PWD}/sdk/sample && make ${BUILD_TYPE} APPTYPE=od ${DUMP_MEMORY_CONSUMPTION} && touch ${BUILD_STATE_FILE}"
 }
 
+build_kp() {
+    echo "build_kp"
+    builddockerimage
+    docker run --rm \
+        -v $PWD/sdk/:$PWD/sdk/ \
+        $NAME_IMAGE \
+        /bin/sh -c "cd ${PWD}/sdk/sample && make ${BUILD_TYPE} APPTYPE=kp ${DUMP_MEMORY_CONSUMPTION} && touch ${BUILD_STATE_FILE}"
+}
+
 build_switch_dnn() {
     echo "build_switch_dnn"
     builddockerimage
@@ -106,6 +115,8 @@ check_app_size() {
         wasm_files="$release_dir/vision_app_objectdetection.wasm"
     elif [ "$APP_TYPE" = "ic" ]; then
         wasm_files="$release_dir/vision_app_classification.wasm"
+    elif [ "$APP_TYPE" = "kp" ]; then
+        wasm_files="$release_dir/vision_app_keypointdetection.wasm"
     elif [ "$APP_TYPE" = "switchdnn" ]; then
         wasm_files="$release_dir/vision_app_switch_dnn.wasm"
     else
@@ -132,10 +143,12 @@ do
                 APP_TYPE=$OPTARG
             elif [ "$OPTARG" = "od" ]; then
                 APP_TYPE=$OPTARG
+            elif [ "$OPTARG" = "kp" ]; then
+                APP_TYPE=$OPTARG
             elif [ "$OPTARG" = "switchdnn" ]; then
                 APP_TYPE=$OPTARG
             else
-                echo "-t options must be ic, od or switchdnn."
+                echo "-t options must be ic, od, kp or switchdnn."
                 exit 0
             fi;
             ;;
@@ -160,6 +173,8 @@ if [ "$APP_TYPE" = "od" ]; then
     build_od
 elif [ "$APP_TYPE" = "ic" ]; then
     build_ic
+elif [ "$APP_TYPE" = "kp" ]; then
+    build_kp
 elif [ "$APP_TYPE" = "switchdnn" ]; then
     build_switch_dnn
 else

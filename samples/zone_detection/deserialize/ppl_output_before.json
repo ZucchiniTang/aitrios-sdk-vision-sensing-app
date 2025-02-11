@@ -1,0 +1,19 @@
+{
+  "perception": {
+    "object_detection_list": [
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 57,
+          "top": 92,
+          "right": 88,
+          "bottom": 128
+        },
+        "score": 0.90625,
+        "iou": 0.777778,
+        "zoneflag": false
+      }
+    ]
+  }
+}

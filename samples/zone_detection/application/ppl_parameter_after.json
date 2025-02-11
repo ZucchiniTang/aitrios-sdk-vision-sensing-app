@@ -1,0 +1,21 @@
+{
+    "header": {
+        "id": "00",
+        "version": "01.01.00"
+    },
+    "dnn_output_detections": 64,
+    "max_detections": 10,
+    "mode": 0,
+    "zone": {
+        "top_left_x": 11,
+        "top_left_y": 179,
+        "bottom_right_x": 212,
+        "bottom_right_y": 276
+    },
+    "threshold": {
+        "iou": 0.5,
+        "score": 0.4
+    },
+    "input_width": 320,
+    "input_height": 320
+}

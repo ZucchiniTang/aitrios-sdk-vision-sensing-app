@@ -1,0 +1,110 @@
+{
+  "perception": {
+    "object_detection_list": [
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 57,
+          "top": 92,
+          "right": 88,
+          "bottom": 128
+        },
+        "score": 0.90625,
+        "iou": 0.0,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 112,
+          "top": 95,
+          "right": 137,
+          "bottom": 134
+        },
+        "score": 0.796875,
+        "iou": 0.0,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 153,
+          "top": 105,
+          "right": 176,
+          "bottom": 146
+        },
+        "score": 0.609375,
+        "iou": 0.0,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 160,
+          "top": 104,
+          "right": 179,
+          "bottom": 141
+        },
+        "score": 0.609375,
+        "iou": 0.0,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 82,
+          "top": 132,
+          "right": 143,
+          "bottom": 170
+        },
+        "score": 0.609375,
+        "iou": 0.0,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 183,
+          "top": 154,
+          "right": 230,
+          "bottom": 187
+        },
+        "score": 0.609375,
+        "iou": 0.149581,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 187,
+          "top": 190,
+          "right": 243,
+          "bottom": 232
+        },
+        "score": 0.609375,
+        "iou": 0.446429,
+        "zoneflag": false
+      },
+      {
+        "class_id": 0,
+        "bounding_box_type": "BoundingBox2d",
+        "bounding_box": {
+          "left": 97,
+          "top": 196,
+          "right": 164,
+          "bottom": 244
+        },
+        "score": 0.609375,
+        "iou": 1.0,
+        "zoneflag": true
+      }
+    ]
+  }
+}
