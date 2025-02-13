@@ -15,7 +15,7 @@
 #
 ############################################################################
 
-DEBUG ?= 0
+DEBUG ?= 1
 
 CLEAN_DIR = $(PWD)/build
 DEBUG_BUILD_DIR = $(PWD)/build/debug/sample/vision_app/single_dnn/keypointdetection
