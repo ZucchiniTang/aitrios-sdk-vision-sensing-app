@@ -1,18 +1,18 @@
 Performing C SOURCE FILE Test M32_OK failed with the following output:
 Change Dir: /workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/testapp/build/loader/CMakeFiles/CMakeTmp
 
-Run Build Command(s):/usr/bin/make cmTC_905d4/fast && /usr/bin/make -f CMakeFiles/cmTC_905d4.dir/build.make CMakeFiles/cmTC_905d4.dir/build
+Run Build Command(s):/usr/bin/make cmTC_1fb75/fast && /usr/bin/make -f CMakeFiles/cmTC_1fb75.dir/build.make CMakeFiles/cmTC_1fb75.dir/build
 make[1]: Entering directory '/workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/testapp/build/loader/CMakeFiles/CMakeTmp'
-Building C object CMakeFiles/cmTC_905d4.dir/src.c.o
-/usr/bin/cc   -Wall -Wextra -Wformat -Wformat-security -mindirect-branch-register -g -O0 -D_FILE_OFFSET_BITS=64 -std=gnu99 -ffunction-sections -fdata-sections                                          -Wall -Wno-unused-parameter -Wno-pedantic -DM32_OK   -m32 -o CMakeFiles/cmTC_905d4.dir/src.c.o   -c /workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/testapp/build/loader/CMakeFiles/CMakeTmp/src.c
-Linking C executable cmTC_905d4
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_905d4.dir/link.txt --verbose=1
-/usr/bin/cc  -Wall -Wextra -Wformat -Wformat-security -mindirect-branch-register -g -O0 -D_FILE_OFFSET_BITS=64 -std=gnu99 -ffunction-sections -fdata-sections                                          -Wall -Wno-unused-parameter -Wno-pedantic -DM32_OK    -rdynamic CMakeFiles/cmTC_905d4.dir/src.c.o  -o cmTC_905d4 
-/usr/bin/ld: i386 architecture of input file `CMakeFiles/cmTC_905d4.dir/src.c.o' is incompatible with i386:x86-64 output
+Building C object CMakeFiles/cmTC_1fb75.dir/src.c.o
+/usr/bin/cc   -Wall -Wextra -Wformat -Wformat-security -mindirect-branch-register -g -O0 -D_FILE_OFFSET_BITS=64 -std=gnu99 -ffunction-sections -fdata-sections                                          -Wall -Wno-unused-parameter -Wno-pedantic -DM32_OK   -m32 -o CMakeFiles/cmTC_1fb75.dir/src.c.o   -c /workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/testapp/build/loader/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_1fb75
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1fb75.dir/link.txt --verbose=1
+/usr/bin/cc  -Wall -Wextra -Wformat -Wformat-security -mindirect-branch-register -g -O0 -D_FILE_OFFSET_BITS=64 -std=gnu99 -ffunction-sections -fdata-sections                                          -Wall -Wno-unused-parameter -Wno-pedantic -DM32_OK    -rdynamic CMakeFiles/cmTC_1fb75.dir/src.c.o  -o cmTC_1fb75 
+/usr/bin/ld: i386 architecture of input file `CMakeFiles/cmTC_1fb75.dir/src.c.o' is incompatible with i386:x86-64 output
 collect2: error: ld returned 1 exit status
-make[1]: *** [CMakeFiles/cmTC_905d4.dir/build.make:87: cmTC_905d4] Error 1
+make[1]: *** [CMakeFiles/cmTC_1fb75.dir/build.make:87: cmTC_1fb75] Error 1
 make[1]: Leaving directory '/workspaces/aitrios-sdk-vision-sensing-app/tutorials/4_prepare_application/1_develop/testapp/build/loader/CMakeFiles/CMakeTmp'
-make: *** [Makefile:121: cmTC_905d4/fast] Error 2
+make: *** [Makefile:121: cmTC_1fb75/fast] Error 2
 
 
 Source file was:

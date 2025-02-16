@@ -1,26 +1,17 @@
 {
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-      {
-        "name": "Debug Vision App Keypoint Detection",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/.devcontainer/dependencies/aitrios-sdk-keypoint-detection-webapp-cs/sample/sample/vision_app/single_dnn/keypointdetection/build/debug/vision_app_keypointdetection.wasm",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "gdb",  // or "lldb" depending on your system
-        "miDebuggerPath": "/usr/bin/gdb",
-        "setupCommands": [
-          {
-            "description": "Enable pretty-printing for gdb",
-            "text": "-enable-pretty-printing",
-            "ignoreFailures": true
-          }
-        ]
-      }
+        {
+            "type": "wamr-debug",
+            "request": "attach",
+            "name": "Debug",
+            "stopOnEntry": true,
+            "attachCommands": [
+                "process connect -p wasm connect://127.0.0.1:1234"
+            ]
+        }
     ]
-  }
-  
+}

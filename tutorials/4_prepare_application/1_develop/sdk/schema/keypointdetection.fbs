@@ -1,4 +1,4 @@
-// version 1.0.0 
+// version 1.0.0
 
 /*
  * Copyright 2023 Sony Semiconductor Solutions Corp. All rights reserved.
@@ -20,19 +20,26 @@
 namespace SmartCamera;
 
 table Keypoint2d {
-  x:float;    
-  y:float;    
-  score:float; 
+  x:float;
+  y:float;
+  confidence:float;
 }
 
-table PoseEstimationData {
-  person_id:uint;
-  keypoints:[Keypoint2d]; 
+table BoundingBox {
+  x:float;
+  y:float;
+  width:float;
+  height:float;
+  confidence:float;
 }
 
-table PoseEstimationTop {
-  perception:PoseEstimationData;
+table Person {
+  keypoints:[Keypoint2d];  // List of 17 keypoints
+  bounding_box:BoundingBox;
 }
 
-root_type PoseEstimationTop;
+table KeypointDetection {
+  persons:[Person];
+}
 
+root_type KeypointDetection;

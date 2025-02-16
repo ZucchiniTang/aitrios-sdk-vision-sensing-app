@@ -65,7 +65,7 @@ do
   esac
 done
 
-if [ $LOAD_PGM != "ic" ] && [ $LOAD_PGM != "od" ] && [ $LOAD_PGM != "switchdnn" ]; then
+if [ $LOAD_PGM != "ic" ] && [ $LOAD_PGM != "od" ] && [ $LOAD_PGM != "kp" ]&& [ $LOAD_PGM != "switchdnn" ]; then
     usage_exit
 fi
 
@@ -82,6 +82,12 @@ if [ "$USER_WASM_FILE" = "" ]; then
             WASM_FILE=${PWD}/sdk/sample/build/debug/vision_app_objectdetection.wasm
         else
             WASM_FILE=${PWD}/sdk/sample/build/release/vision_app_objectdetection.wasm
+        fi
+    elif [ $LOAD_PGM = "kp" ]; then
+        if [ -n "$DEBUGGER" ] && [ $DEBUGGER = "-d" ]; then
+            WASM_FILE=${PWD}/sdk/sample/build/debug/vision_app_keypointdetection.wasm
+        else
+            WASM_FILE=${PWD}/sdk/sample/build/release/vision_app_keypointdetection.wasm
         fi
     else
         if [ -n "$DEBUGGER" ] && [ $DEBUGGER = "-d" ]; then
@@ -105,6 +111,8 @@ if [ "$PPL_PARAMETER_FILE" = "" ]; then
         PPL_PARAMETER_FILE="${PWD}/testapp/classification/ppl_parameter.json"
     elif [ $LOAD_PGM = "od" ]; then
         PPL_PARAMETER_FILE="${PWD}/testapp/objectdetection/ppl_parameter.json"
+    elif [ $LOAD_PGM = "kp" ]; then
+        PPL_PARAMETER_FILE="${PWD}/testapp/keypointdetection/ppl_parameter.json"
     else
         PPL_PARAMETER_FILE="${PWD}/testapp/switch_dnn/ppl_parameter.json"
     fi
@@ -115,6 +123,8 @@ if [ "$OUTPUT_TENSOR_FILE" = "" ]; then
         OUTPUT_TENSOR_FILE="${PWD}/testapp/classification/output_tensor.jsonc"
     elif [ $LOAD_PGM = "od" ]; then
         OUTPUT_TENSOR_FILE="${PWD}/testapp/objectdetection/output_tensor.jsonc"
+    elif [ $LOAD_PGM = "kp" ]; then
+        OUTPUT_TENSOR_FILE="${PWD}/testapp/keypointdetection/output_tensor.jsonc"
     else
         OUTPUT_TENSOR_FILE="${PWD}/testapp/switch_dnn/output_tensor.jsonc"
     fi 
