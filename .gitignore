@@ -14,3 +14,5 @@ diag-*.png
 # tutorials setting
 tutorials/**/configuration.json
 
+tutorials/4_prepare_application/1_develop/check_size/wamrc
+*.wamrc
