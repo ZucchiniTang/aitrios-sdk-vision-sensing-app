@@ -19,27 +19,32 @@
 
 namespace SmartCamera;
 
-table Keypoint2d {
-  x:float;
-  y:float;
-  confidence:float;
+table BoundingBox2d {
+  x:int;
+  y:int;
+  w:int;
+  h:int;
+  conf:float;
 }
 
-table BoundingBox {
-  x:float;
-  y:float;
-  width:float;
-  height:float;
-  confidence:float;
+table Keypoint2d {
+  x:int;
+  y:int;
+  conf:float;
 }
 
 table Person {
-  keypoints:[Keypoint2d];  // List of 17 keypoints
-  bounding_box:BoundingBox;
+  bounding_box:BoundingBox2d;
+  keypoints:[Keypoint2d];  // e.g., 17 keypoints for pose
 }
 
-table KeypointDetection {
+
+table KeypointDetectionData {
   persons:[Person];
 }
 
-root_type KeypointDetection;
+table KeypointDetectionTop {
+  perception:KeypointDetectionData;
+}
+
+root_type KeypointDetectionTop;

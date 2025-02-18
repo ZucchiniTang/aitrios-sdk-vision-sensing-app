@@ -5,7 +5,7 @@
     },
     "dnn_output_detections": 2,
     "max_detections": 2,
-    "threshold": 0.3,
+    "threshold": 0.0,
     "input_width": 320,
     "input_height": 320
 }

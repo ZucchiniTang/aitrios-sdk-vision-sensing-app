@@ -50,6 +50,7 @@ typedef struct tagBbox {
     float y;
     float w;
     float h;
+    float conf;
 } Bbox;
 
 typedef struct tagKeypoint {
@@ -58,35 +59,38 @@ typedef struct tagKeypoint {
     float conf;   
 } Keypoint;
 
-
-typedef struct tagObjectDetectionSsdOutputTensor {
-    float numOfDetections;
+typedef struct tagKeypointDetectionOutputTensor {
+    uint8_t numOfPersons;
     std::vector<Bbox> bboxes;
     std::vector<std::vector<Keypoint>> keypoints;
-    std::vector<float> scores;
-    std::vector<float> classes;
-} ObjectDetectionSsdOutputTensor;
+} KeypointDetectionOutputTensor;
 
 typedef struct tagPPL_Bbox {
-    uint16_t    m_xmin;
-    uint16_t    m_ymin;
-    uint16_t    m_xmax;
-    uint16_t    m_ymax;
+    uint16_t    m_x;
+    uint16_t    m_y;
+    uint16_t    m_w;
+    uint16_t    m_h;
+    float m_conf;
 } PPL_Bbox;
 
-typedef struct tagObjectDetectionSsdData {
-    uint8_t numOfDetections = 0;
+typedef struct tagPPL_Keypoint {
+    uint16_t m_x;      
+    uint16_t m_y;      
+    float m_conf;   
+} PPL_Keypoint;
+
+typedef struct tagKeypointDetectionData {
+    uint8_t numOfPersons;
     std::vector<PPL_Bbox> v_bbox;
-    std::vector<std::vector<Keypoint>> v_keypoints;
-    std::vector<float> v_scores;
-} ObjectDetectionSsdData;
+    std::vector<std::vector<PPL_Keypoint>> v_keypoint;
+} KeypointDetectionData;
 
 /* -------------------------------------------------------- */
 /* static                                                   */
 /* -------------------------------------------------------- */
-static int createObjectDetectionSsdData(float *data_body, uint32_t detect_num, ObjectDetectionSsdOutputTensor *objectdetection_output);
-static void analyzeObjectDetectionSsdOutput(ObjectDetectionSsdOutputTensor out_tensor, ObjectDetectionSsdData *output_objectdetection_data, PPL_SsdParam ssd_param);
-static void createSSDOutputFlatbuffer(flatbuffers::FlatBufferBuilder *builder, const ObjectDetectionSsdData *ssdData);
+static int createKeypointDetectionData(float *data_body, uint32_t detect_num, KeypointDetectionOutputTensor *objectdetection_output);
+static void analyzeKeypointDetectionSsdOutput(KeypointDetectionOutputTensor out_tensor, KeypointDetectionData *output_objectdetection_data, PPL_SsdParam ssd_param);
+static void createSSDOutputFlatbuffer(flatbuffers::FlatBufferBuilder *builder, const KeypointDetectionData *ssdData);
 static EPPL_RESULT_CODE PPL_ObjectDetectionSsdParamInit(JSON_Value *root_value, PPL_SsdParam *p_ssd_param);
 
 /* -------------------------------------------------------- */
@@ -98,8 +102,8 @@ static EPPL_RESULT_CODE PPL_ObjectDetectionSsdParamInit(JSON_Value *root_value, 
 EPPL_RESULT_CODE PPL_KeypointDetectionSsdAnalyze(float *p_data, uint32_t in_size, void **pp_out_buf,  uint32_t *p_out_size, PPL_SsdParam ssd_param) {
 
     uint8_t *p_out_param = NULL;
-    ObjectDetectionSsdOutputTensor objectdetection_output;
-    ObjectDetectionSsdData output_objectdetection_data;
+    KeypointDetectionOutputTensor objectdetection_output;
+    KeypointDetectionData output_objectdetection_data;
 
     PPL_DBG_PRINTF("PPL_KeypointDetectionSsdAnalyze");
 
@@ -115,14 +119,14 @@ EPPL_RESULT_CODE PPL_KeypointDetectionSsdAnalyze(float *p_data, uint32_t in_size
     }
 
     /* call interface process */
-    int ret = createObjectDetectionSsdData(p_data, ssd_param.dnnOutputDetections, &objectdetection_output);
+    int ret = createKeypointDetectionData(p_data, ssd_param.dnnOutputDetections, &objectdetection_output);
     if (ret != 0) {
         PPL_ERR_PRINTF("PPL: Error in createObjectDetectionData");
         return E_PPL_OTHER;
     }
 
     /* call analyze process */
-    analyzeObjectDetectionSsdOutput(objectdetection_output, &output_objectdetection_data, ssd_param);
+    analyzeKeypointDetectionSsdOutput(objectdetection_output, &output_objectdetection_data, ssd_param);
 
     /* Serialize Data to FLatbuffers */ 
     pthread_mutex_lock(&g_libc_mutex);
@@ -302,111 +306,93 @@ static EPPL_RESULT_CODE PPL_ObjectDetectionSsdParamInit(JSON_Value *root_value, 
 }
 
 /**
- * @brief createObjectDetectionSsdData
+ * @brief createKeypointDetectionData
  */
-static int createObjectDetectionSsdData(float *data_body, uint32_t detect_num, ObjectDetectionSsdOutputTensor *objectdetection_output) {
+static int createKeypointDetectionData(float *data_body, uint32_t detect_num, KeypointDetectionOutputTensor *objectdetection_output) {
 
     float* out_data = data_body;
     uint32_t count = 0;
     std::vector<Bbox> v_bbox;
-    std::vector<std::vector<Keypoint>> v_keypoints;
-    std::vector<float> v_scores;
+    std::vector<std::vector<Keypoint>> v_keypoint;
 
     /* Extract number of Detections */
     uint8_t totalDetections = (uint8_t)detect_num;
-    if ((count + (totalDetections * 4)) > PPL_DNN_OUTPUT_TENSOR_SIZE(detect_num)) {
-        PPL_ERR_PRINTF("Invalid count index %d", count);
+
+    static const int KEYPOINT_COUNT  = 17;
+    static const int FLOATS_PER_KP   = 3;   // (x, y, conf)
+    static const int FLOATS_PER_BBOX = 5;   // (x, y, w, h, conf)
+
+    int floatsPerDetection = FLOATS_PER_BBOX + KEYPOINT_COUNT * FLOATS_PER_KP;
+
+    if ((count + (totalDetections * floatsPerDetection)) > PPL_DNN_OUTPUT_TENSOR_SIZE(detect_num)) {
+        PPL_ERR_PRINTF("Invalid count index %d\n", count);
         return -1;
     }
-
 
     // Extract bounding box coordinates - keypoint
     for (uint8_t i = 0; i < totalDetections; i++) {
+        // Calculate the base index for this detection
+        int base = count + i * floatsPerDetection;
+        
+        // 1) BBox
         Bbox bbox;
-        bbox.x = out_data[count + (i * 4)];     // bbox.x
-        bbox.y = out_data[count + (i * 4) + 1]; // bbox.y
-        bbox.w     = out_data[count + (i * 4) + 2]; // bbox.w
-        bbox.h     = out_data[count + (i * 4) + 3]; // bbox.h
-
+        bbox.x = out_data[base + 0];     // bbox.x
+        bbox.y = out_data[base + 1]; // bbox.y
+        bbox.w     = out_data[base + 2]; // bbox.w
+        bbox.h     = out_data[base + 3]; // bbox.h
+        bbox.conf  = out_data[base + 4]; // bbox.conf
         pthread_mutex_lock(&g_libc_mutex);
         v_bbox.push_back(bbox);
         pthread_mutex_unlock(&g_libc_mutex);
-    }
-    count += (totalDetections * 4);
 
-    // Extract keypoints
-    for (uint8_t i = 0; i < totalDetections; i++) {
-        std::vector<Keypoint> keypoints; 
-        for (uint8_t j = 0; j < 17; j++) { 
+        // 2) Keypoints
+        std::vector<Keypoint> kps;
+        kps.reserve(KEYPOINT_COUNT);
+        int kpStart = base + FLOATS_PER_BBOX; // after the 5 bbox floats
+        for (int kp_idx = 0; kp_idx < KEYPOINT_COUNT; kp_idx++)
+        {
+            int offset = kpStart + kp_idx * FLOATS_PER_KP;
             Keypoint kp;
-            kp.x = out_data[count];
-            kp.y = out_data[count + 1];
-            kp.conf = out_data[count + 2]; 
-
-            pthread_mutex_lock(&g_libc_mutex);
-            keypoints.push_back(kp);
-            pthread_mutex_unlock(&g_libc_mutex);
-
-            count += 3; 
+            kp.x    = out_data[offset + 0];
+            kp.y    = out_data[offset + 1];
+            kp.conf = out_data[offset + 2];
+            kps.push_back(kp);
         }
-
         pthread_mutex_lock(&g_libc_mutex);
-        v_keypoints.push_back(keypoints); // 存入整个 vector
+        v_keypoint.push_back(kps);
         pthread_mutex_unlock(&g_libc_mutex);
     }
-
-    // Extract confidence scores for bounding boxes
-    for (uint8_t i = 0; i < totalDetections; i++) {
-        if (count >= PPL_DNN_OUTPUT_TENSOR_SIZE(detect_num)) {
-            PPL_ERR_PRINTF("Invalid count index %d", count);
-            return -1;
-        }
-        float bbox_conf = out_data[count];
-
-        pthread_mutex_lock(&g_libc_mutex);
-        v_scores.push_back(bbox_conf);
-        pthread_mutex_unlock(&g_libc_mutex);
-
-        count++;
-    }
-
-
-    if (count > PPL_DNN_OUTPUT_TENSOR_SIZE(detect_num)) {
-        PPL_ERR_PRINTF("Invalid count index %d",count);
-        return -1;
-    }
-
+    count += (totalDetections * floatsPerDetection);
 
     pthread_mutex_lock(&g_libc_mutex);
     objectdetection_output->bboxes = v_bbox;
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    objectdetection_output->scores = v_scores;
+    objectdetection_output->keypoints = v_keypoint;
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    objectdetection_output->keypoints = v_keypoints;
+    objectdetection_output->numOfPersons = totalDetections;
     pthread_mutex_unlock(&g_libc_mutex);
 
     return 0;
 }
 
 /**
- * @brief analyzeObjectDetectionSsdOutput
+ * @brief analyzeKeypointDetectionSsdOutput
  */
-static void analyzeObjectDetectionSsdOutput(ObjectDetectionSsdOutputTensor out_tensor, ObjectDetectionSsdData *output_objectdetection_data, PPL_SsdParam ssd_param) {
+static void analyzeKeypointDetectionSsdOutput(KeypointDetectionOutputTensor out_tensor, KeypointDetectionData *output_objectdetection_data, PPL_SsdParam ssd_param) {
 
     uint8_t num_of_detections;
     uint8_t detections_above_threshold = 0;
     std::vector<PPL_Bbox> v_bbox;
-    std::vector<float> v_scores;
-    std::vector<std::vector<Keypoint>> v_keypoints;
-    ObjectDetectionSsdData objectdetection_data;
+    std::vector<std::vector<PPL_Keypoint>> v_keypoint;
+    KeypointDetectionData objectdetection_data;
 
 
     /* Extract number of detections */
-    num_of_detections = (uint8_t)out_tensor.numOfDetections;
+    num_of_detections = (uint8_t)out_tensor.numOfPersons;
 
     for (uint8_t i = 0; i < num_of_detections; i++) {
 
@@ -414,173 +400,226 @@ static void analyzeObjectDetectionSsdOutput(ObjectDetectionSsdOutputTensor out_t
         float score;
 
         pthread_mutex_lock(&g_libc_mutex);
-        score = out_tensor.scores[i];
+        score = out_tensor.bboxes[i].conf;
         pthread_mutex_unlock(&g_libc_mutex);
 
         /* Filter Detections */
         if (score < ssd_param.threshold) {
             continue;
         } else {
-            pthread_mutex_lock(&g_libc_mutex);
-            v_scores.push_back(score);
-            pthread_mutex_unlock(&g_libc_mutex);
-
-            /* Extract bounding box co-ordinates */
+            /* Extract bounding box co-ordinates and score */
             PPL_Bbox bbox;
+            // x
             pthread_mutex_lock(&g_libc_mutex);
-            bbox.m_xmin = (uint16_t)(round((out_tensor.bboxes[i].x_min) * (ssd_param.inputWidth - 1)));
+            bbox.m_x = static_cast<uint16_t>(round(out_tensor.bboxes[i].x * (ssd_param.inputWidth - 1)));
+            pthread_mutex_unlock(&g_libc_mutex);
+            // y
+            pthread_mutex_lock(&g_libc_mutex);
+            bbox.m_y = static_cast<uint16_t>(round(out_tensor.bboxes[i].y * (ssd_param.inputHeight - 1)));
+            pthread_mutex_unlock(&g_libc_mutex);
+            // w
+            pthread_mutex_lock(&g_libc_mutex);
+            bbox.m_w = static_cast<uint16_t>(round(out_tensor.bboxes[i].w * (ssd_param.inputWidth - 1)));
+            pthread_mutex_unlock(&g_libc_mutex);
+            // h
+            pthread_mutex_lock(&g_libc_mutex);
+            bbox.m_h = static_cast<uint16_t>(round(out_tensor.bboxes[i].h * (ssd_param.inputHeight - 1)));
+            pthread_mutex_unlock(&g_libc_mutex);
+            // conf
+            pthread_mutex_lock(&g_libc_mutex);
+            bbox.m_conf = out_tensor.bboxes[i].conf;
             pthread_mutex_unlock(&g_libc_mutex);
 
-            pthread_mutex_lock(&g_libc_mutex);
-            bbox.m_ymin = (uint16_t)(round((out_tensor.bboxes[i].y_min) * (ssd_param.inputHeight  - 1)));
-            pthread_mutex_unlock(&g_libc_mutex);
-
-            pthread_mutex_lock(&g_libc_mutex);
-            bbox.m_xmax = (uint16_t)(round((out_tensor.bboxes[i].x_max) * (ssd_param.inputWidth  - 1)));
-            pthread_mutex_unlock(&g_libc_mutex);
-
-            pthread_mutex_lock(&g_libc_mutex);
-            bbox.m_ymax = (uint16_t)(round((out_tensor.bboxes[i].y_max) * (ssd_param.inputHeight - 1)));
-            pthread_mutex_unlock(&g_libc_mutex);
-
+            // Push the new bbox to the vector
             pthread_mutex_lock(&g_libc_mutex);
             v_bbox.push_back(bbox);
             pthread_mutex_unlock(&g_libc_mutex);
-
-           /* Extract classes */
-            uint8_t class_index;
-            pthread_mutex_lock(&g_libc_mutex);
-            class_index = (uint8_t)out_tensor.classes[i];
-            pthread_mutex_unlock(&g_libc_mutex);
-
-            pthread_mutex_lock(&g_libc_mutex);
-            v_classes.push_back(class_index);
-            pthread_mutex_unlock(&g_libc_mutex);
-
             detections_above_threshold++;
+            
+            /* Extract keypoint co-ordinates */
+            static const int NUM_KEYPOINTS = 17;
+            std::vector<PPL_Keypoint> ppl_keypoints;
+
+            for (int kp_idx = 0; kp_idx < NUM_KEYPOINTS; kp_idx++) {
+                PPL_Keypoint kp;
+                // x
+                pthread_mutex_lock(&g_libc_mutex);
+                kp.m_x = static_cast<uint16_t>(
+                    round(out_tensor.keypoints[i][kp_idx].x * (ssd_param.inputWidth - 1))
+                );
+                pthread_mutex_unlock(&g_libc_mutex);
+                // y
+                pthread_mutex_lock(&g_libc_mutex);
+                kp.m_y = static_cast<uint16_t>(
+                    round(out_tensor.keypoints[i][kp_idx].y * (ssd_param.inputHeight - 1))
+                );
+                pthread_mutex_unlock(&g_libc_mutex);
+                // conf
+                pthread_mutex_lock(&g_libc_mutex);
+                kp.m_conf = out_tensor.keypoints[i][kp_idx].conf;
+                pthread_mutex_unlock(&g_libc_mutex);
+
+                // Push the new keypoint to the vector
+                pthread_mutex_lock(&g_libc_mutex);
+                ppl_keypoints.push_back(kp);
+                pthread_mutex_unlock(&g_libc_mutex);
+            }
+
+            pthread_mutex_lock(&g_libc_mutex);
+            v_keypoint.push_back(ppl_keypoints);
+            pthread_mutex_unlock(&g_libc_mutex);
         }
     }
 
-    objectdetection_data.numOfDetections = detections_above_threshold;
+    objectdetection_data.numOfPersons = detections_above_threshold;
 
     pthread_mutex_lock(&g_libc_mutex);
     objectdetection_data.v_bbox = v_bbox;
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    objectdetection_data.v_scores = v_scores;
+    objectdetection_data.v_keypoint = v_keypoint;
     pthread_mutex_unlock(&g_libc_mutex);
 
-    pthread_mutex_lock(&g_libc_mutex);
-    objectdetection_data.v_classes = v_classes;
-    pthread_mutex_unlock(&g_libc_mutex);
 
     //objectdetection_data = getActualDetections(objectdetection_data);
-
-    if (objectdetection_data.numOfDetections > ssd_param.maxDetections) {
-        objectdetection_data.numOfDetections = ssd_param.maxDetections;
+    if (objectdetection_data.numOfPersons > ssd_param.maxDetections) {
+        objectdetection_data.numOfPersons = ssd_param.maxDetections;
 
         pthread_mutex_lock(&g_libc_mutex);
         objectdetection_data.v_bbox.resize(ssd_param.maxDetections);
         pthread_mutex_unlock(&g_libc_mutex);
 
         pthread_mutex_lock(&g_libc_mutex);
-        objectdetection_data.v_classes.resize(ssd_param.maxDetections);
-        pthread_mutex_unlock(&g_libc_mutex);
-
-        pthread_mutex_lock(&g_libc_mutex);
-        objectdetection_data.v_scores.resize(ssd_param.maxDetections);
+        objectdetection_data.v_keypoint.resize(ssd_param.maxDetections);
         pthread_mutex_unlock(&g_libc_mutex);
     }
 
-    output_objectdetection_data->numOfDetections = objectdetection_data.numOfDetections;
+    output_objectdetection_data->numOfPersons = objectdetection_data.numOfPersons;
 
     pthread_mutex_lock(&g_libc_mutex);
     output_objectdetection_data->v_bbox = objectdetection_data.v_bbox;
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    output_objectdetection_data->v_scores = objectdetection_data.v_scores;
+    output_objectdetection_data->v_keypoint = objectdetection_data.v_keypoint;
     pthread_mutex_unlock(&g_libc_mutex);
 
-    pthread_mutex_lock(&g_libc_mutex);
-    output_objectdetection_data->v_classes = objectdetection_data.v_classes;
-    pthread_mutex_unlock(&g_libc_mutex);
-
-    PPL_DBG_PRINTF("number of detections = %d", objectdetection_data.numOfDetections);
-    num_of_detections = objectdetection_data.numOfDetections;
+    PPL_DBG_PRINTF("number of Person = %d", objectdetection_data.numOfPersons);
+    num_of_detections = objectdetection_data.numOfPersons;
     for (int i = 0; i < num_of_detections; i++) {
         pthread_mutex_lock(&g_libc_mutex);
-        uint16_t xmin = objectdetection_data.v_bbox[i].m_xmin;
+        uint16_t x = objectdetection_data.v_bbox[i].m_x;
         pthread_mutex_unlock(&g_libc_mutex);
 
         pthread_mutex_lock(&g_libc_mutex);
-        uint16_t ymin = objectdetection_data.v_bbox[i].m_ymin;
+        uint16_t y = objectdetection_data.v_bbox[i].m_y;
         pthread_mutex_unlock(&g_libc_mutex);
 
         pthread_mutex_lock(&g_libc_mutex);
-        uint16_t xmax = objectdetection_data.v_bbox[i].m_xmax;
+        uint16_t w = objectdetection_data.v_bbox[i].m_w;
         pthread_mutex_unlock(&g_libc_mutex);
 
         pthread_mutex_lock(&g_libc_mutex);
-        uint16_t ymax = objectdetection_data.v_bbox[i].m_ymax;
+        uint16_t h = objectdetection_data.v_bbox[i].m_h;
         pthread_mutex_unlock(&g_libc_mutex);
 
-        PPL_DBG_PRINTF("v_bbox[%d] :[x_min,y_min,x_max,y_max] = [%d,%d,%d,%d]", i, xmin, ymin, xmax, ymax);
+        pthread_mutex_lock(&g_libc_mutex);
+        float conf = objectdetection_data.v_bbox[i].m_conf;
+        pthread_mutex_unlock(&g_libc_mutex);
+
+        PPL_DBG_PRINTF("v_bbox[%d] :[x,y,w,h,conf] = [%d,%d,%d,%d,%f]", i, x, y, w, h, conf);
     }
+
     for (int i = 0; i < num_of_detections; i++) {
         pthread_mutex_lock(&g_libc_mutex);
-        float score = objectdetection_data.v_scores[i];
+        int keypointCount = objectdetection_data.v_keypoint[i].size();
+        pthread_mutex_unlock(&g_libc_mutex);
+    
+        for (int kp_idx = 0; kp_idx < keypointCount; kp_idx++) {
+            pthread_mutex_lock(&g_libc_mutex);
+            uint16_t x   = objectdetection_data.v_keypoint[i][kp_idx].m_x;
+            uint16_t y   = objectdetection_data.v_keypoint[i][kp_idx].m_y;
+            float    conf = objectdetection_data.v_keypoint[i][kp_idx].m_conf;
+            pthread_mutex_unlock(&g_libc_mutex);
+    
+            // Print: Keypoints[i][kp_idx] -> (x, y, conf)
+            PPL_DBG_PRINTF("keypoint[%d][%d]: [x,y,conf] = [%d, %d, %f]\n", 
+                           i, kp_idx, x, y, conf);
+        }
+    }
+
+    for (int i = 0; i < num_of_detections; i++) {
+        pthread_mutex_lock(&g_libc_mutex);
+        float score = objectdetection_data.v_bbox[i].m_conf;
         pthread_mutex_unlock(&g_libc_mutex);
 
         PPL_DBG_PRINTF("scores[%d] = %f", i, score);
     }
-    for (int i = 0; i < num_of_detections; i++) {
-        pthread_mutex_lock(&g_libc_mutex);
-        uint8_t class_indice = objectdetection_data.v_classes[i];
-        pthread_mutex_unlock(&g_libc_mutex);
-
-        PPL_DBG_PRINTF("class_indices[%d/%d] = %d", i, num_of_detections, class_indice);
-    }
-
     return;
 }
 
-/* Function to serialize SSD MobilenetV1 output tensor data into Flatbuffers.
+/* Function to serialize keypoint detection output tensor data into Flatbuffers.
 */
-static void createSSDOutputFlatbuffer(flatbuffers::FlatBufferBuilder* builder, const ObjectDetectionSsdData* ssdData) {
-    std::vector<flatbuffers::Offset<SmartCamera::GeneralObject>> gdata_vector;
+static void createSSDOutputFlatbuffer(flatbuffers::FlatBufferBuilder* builder, const KeypointDetectionData* kpdData) {
+    std::vector<flatbuffers::Offset<SmartCamera::Person>> person_vector;
 
     PPL_DBG_PRINTF("createFlatbuffer");
-    uint8_t numOfDetections = ssdData->numOfDetections;
-    for (uint8_t i = 0; i < numOfDetections; i++) {
-        PPL_DBG_PRINTF("left = %d, top = %d, right = %d, bottom = %d, class = %d, score = %f", ssdData->v_bbox[i].m_xmin, ssdData->v_bbox[i].m_ymin, ssdData->v_bbox[i].m_xmax, ssdData->v_bbox[i].m_ymax, ssdData->v_classes[i], ssdData->v_scores[i]);
+    uint8_t numOfPersons = kpdData->numOfPersons;
+    
+    for (uint8_t i = 0; i < numOfPersons; i++) {
+        PPL_DBG_PRINTF("Person %d: bbox(x=%d, y=%d, w=%d, h=%d, conf=%f)", i, 
+            kpdData->v_bbox[i].m_x, 
+            kpdData->v_bbox[i].m_y, 
+            kpdData->v_bbox[i].m_w, 
+            kpdData->v_bbox[i].m_h, 
+            kpdData->v_bbox[i].m_conf);
+
         pthread_mutex_lock(&g_libc_mutex);
-        auto bbox_data = SmartCamera::CreateBoundingBox2d(*builder, ssdData->v_bbox[i].m_xmin, \
-            ssdData->v_bbox[i].m_ymin, \
-            ssdData->v_bbox[i].m_xmax, \
-            ssdData->v_bbox[i].m_ymax);
+        auto bbox_data = SmartCamera::CreateBoundingBox2d(*builder, 
+            kpdData->v_bbox[i].m_x,
+            kpdData->v_bbox[i].m_y,
+            kpdData->v_bbox[i].m_w,
+            kpdData->v_bbox[i].m_h,
+            kpdData->v_bbox[i].m_conf);
+        pthread_mutex_unlock(&g_libc_mutex);
+
+        std::vector<flatbuffers::Offset<SmartCamera::Keypoint2d>> keypoints_vector;
+        
+        for (uint8_t j = 0; j < 17; j++) {
+            pthread_mutex_lock(&g_libc_mutex);
+            auto keypoint = SmartCamera::CreateKeypoint2d(*builder, 
+                kpdData->v_keypoint[i][j].m_x,
+                kpdData->v_keypoint[i][j].m_y,
+                kpdData->v_keypoint[i][j].m_conf);
+            pthread_mutex_unlock(&g_libc_mutex);
+            
+            keypoints_vector.push_back(keypoint);
+        }
+        
+        pthread_mutex_lock(&g_libc_mutex);
+        auto keypoints_fb = builder->CreateVector(keypoints_vector);
         pthread_mutex_unlock(&g_libc_mutex);
 
         pthread_mutex_lock(&g_libc_mutex);
-        auto general_data = SmartCamera::CreateGeneralObject(*builder, ssdData->v_classes[i], SmartCamera::BoundingBox_BoundingBox2d, bbox_data.Union(), ssdData->v_scores[i]);
+        auto person_data = SmartCamera::CreatePerson(*builder, bbox_data, keypoints_fb);
         pthread_mutex_unlock(&g_libc_mutex);
-
+        
         pthread_mutex_lock(&g_libc_mutex);
-        gdata_vector.push_back(general_data);
+        person_vector.push_back(person_data);
         pthread_mutex_unlock(&g_libc_mutex);
     }
 
     pthread_mutex_lock(&g_libc_mutex);
-    auto v_bbox = builder->CreateVector(gdata_vector);
+    auto persons_fb = builder->CreateVector(person_vector);
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    auto od_data = SmartCamera::CreateObjectDetectionData(*builder, v_bbox);
+    auto kd_data = SmartCamera::CreateKeypointDetectionData(*builder, persons_fb);
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
-    auto out_data = SmartCamera::CreateObjectDetectionTop(*builder, od_data);
+    auto out_data = SmartCamera::CreateKeypointDetectionTop(*builder, kd_data);
     pthread_mutex_unlock(&g_libc_mutex);
 
     pthread_mutex_lock(&g_libc_mutex);
